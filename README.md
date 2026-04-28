@@ -1,3 +1,69 @@
+
+# TaskFlow Angular App
+
+A modern Angular 17+ application built step-by-step with a focus on clean architecture, scalability, and best practices.
+
+This project follows a structured learning approach, evolving from a simple dashboard into a component-based Angular application.
+
+---
+
+## 🚀 Features
+
+- Component-based architecture
+- Smart vs Presentational components
+- Angular Signals for state management
+- Standalone components (no NgModules)
+- Clean separation of concerns
+- Reusable UI components
+
+---
+
+## 📚 Progress
+
+- ✅ Chapter 1 — Initial setup and dashboard
+- ✅ Chapter 2 — Component decomposition (TaskCard, StatusBadge)
+
+---
+
+## 🧱 Architecture
+
+The application follows a clear separation of responsibilities:
+
+- **DashboardComponent**
+  - Acts as a smart container
+  - Manages application state
+  - Computes summary statistics
+  - Handles navigation and events
+
+- **TaskCardComponent**
+  - Reusable presentational component
+  - Displays task details
+  - Emits user actions (view, mark done)
+
+- **StatusBadgeComponent**
+  - Small reusable UI component
+  - Handles status display and styling
+  - Fully independent and reusable
+
+---
+
+## 📸 Screenshot
+
+> Add your screenshot to `docs/dashboard.png`
+
+```text
+docs/dashboard.png
+
+
+
+
+
+
+
+
+
+
+
 # Taskflow
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.8.
