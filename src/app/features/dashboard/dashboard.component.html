@@ -1,0 +1,58 @@
+<div class="dashboard-container">
+  <header class="dashboard-header">
+    <div class="header-content">
+      <h1>TaskFlow Dashboard</h1>
+      <p class="header-date">{{ today | date:'EEEE, MMMM d, yyyy' }}</p>
+    </div>
+
+    <div class="header-actions">
+      <button class="btn-primary" routerLink="/tasks/new">
+        + New Task
+      </button>
+    </div>
+  </header>
+
+  <section class="summary-cards" aria-label="Task summary">
+    <div class="card">
+      <span class="card-number">{{ totalTasks() }}</span>
+      <span class="card-label">Total Tasks</span>
+    </div>
+
+    <div class="card card-progress">
+      <span class="card-number">{{ inProgressTasks() }}</span>
+      <span class="card-label">In Progress</span>
+    </div>
+
+    <div class="card card-done">
+      <span class="card-number">{{ completedTasks() }}</span>
+      <span class="card-label">Completed</span>
+    </div>
+
+    @if (criticalTasks() > 0) {
+      <div class="card card-critical">
+        <span class="card-number">{{ criticalTasks() }}</span>
+        <span class="card-label">Critical</span>
+      </div>
+    }
+  </section>
+
+  <section class="task-section">
+  <h2>Recent Tasks</h2>
+
+  @if (tasks().length === 0) {
+    <div class="empty-state">
+      <p>No tasks yet. <a routerLink="/tasks/new">Create your first task.</a></p>
+    </div>
+  } @else {
+    <div class="task-list" role="list">
+      @for (task of tasks(); track task.id) {
+        <app-task-card
+          [task]="task"
+          (taskSelected)="onTaskSelected($event)"
+          (statusChanged)="onStatusChanged($event)"
+        />
+      }
+    </div>
+  }
+</section>
+</div>

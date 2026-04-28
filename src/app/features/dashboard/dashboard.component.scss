@@ -1,0 +1,84 @@
+.dashboard-container {
+  padding: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  gap: 16px;
+}
+
+.header-content h1 {
+  margin: 0 0 6px;
+}
+
+.header-date {
+  margin: 0;
+  color: #666;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.btn-primary {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 16px;
+  cursor: pointer;
+  background: #2563eb;
+  color: white;
+  font: inherit;
+}
+
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.card {
+  padding: 16px;
+  border-radius: 12px;
+  background: #f4f6f8;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card-number {
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.card-label {
+  color: #555;
+}
+
+.task-section h2 {
+  margin-bottom: 16px;
+}
+
+.task-list {
+  display: grid;
+  gap: 12px;
+}
+
+.empty-state {
+  padding: 18px;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
