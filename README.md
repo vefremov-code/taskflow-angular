@@ -49,10 +49,10 @@ The application follows a clear separation of responsibilities:
 
 ## 📸 Screenshot
 
-> Add your screenshot to `docs/dashboard.png`
+> Add your screenshot to `docs/Chapter2.png`
 
 ```text
-docs/dashboard.png
+docs/Chapter2.png
 
 
 
