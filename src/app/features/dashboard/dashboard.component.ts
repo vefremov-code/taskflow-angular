@@ -1,8 +1,11 @@
 import { ChangeDetectionStrategy, Component, computed, signal, inject  } from '@angular/core';
 import { DatePipe, NgClass } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
-import { Task, TaskStatus } from '../../core/models/task.model';
+import { Task, TaskStatus, TaskPriority  } from '../../core/models/task.model';
 import { TaskCardComponent } from '../tasks/task-card/task-card.component';
+
+type FilterableStatus = TaskStatus | 'all';
+type FilterablePriority = TaskPriority | 'all';
 
 @Component({
   selector: 'app-dashboard',
@@ -56,6 +59,30 @@ export class DashboardComponent {
     }
   ]);
 
+  filterQuery = signal('');
+  statusFilter = signal<FilterableStatus>('all');
+  priorityFilter = signal<FilterablePriority>('all');
+
+  filteredTasks = computed(() => {
+    const query = this.filterQuery().toLowerCase().trim();
+    const status = this.statusFilter();
+    const priority = this.priorityFilter();
+
+    return this.tasks().filter(task => {
+      const matchesQuery =
+        !query ||
+        task.title.toLowerCase().includes(query) ||
+        task.description.toLowerCase().includes(query) ||
+        task.tags.some(tag => tag.toLowerCase().includes(query));
+
+      const matchesStatus = status === 'all' || task.status === status;
+      const matchesPriority = priority === 'all' || task.priority === priority;
+
+      return matchesQuery && matchesStatus && matchesPriority;
+    });
+  });
+
+
   totalTasks = computed(() => this.tasks().length);
   completedTasks = computed(() =>
     this.tasks().filter(t => t.status === 'done').length
@@ -67,10 +94,39 @@ export class DashboardComponent {
     this.tasks().filter(t => t.priority === 'critical').length
   );
 
+  hasActiveFilter = computed(() =>
+    this.filterQuery().trim() !== '' ||
+    this.statusFilter() !== 'all' ||
+    this.priorityFilter() !== 'all'
+  );
+
+
   today = new Date();
 
   onTaskSelected(taskId: string): void {
     this.router.navigate(['/tasks', taskId]);
+  }
+
+  onFilterInput(event: Event): void {
+    this.filterQuery.set((event.target as HTMLInputElement).value);
+  }
+
+  onStatusFilterChange(event: Event): void {
+    this.statusFilter.set(
+      (event.target as HTMLSelectElement).value as FilterableStatus
+    );
+  }
+
+  onPriorityFilterChange(event: Event): void {
+    this.priorityFilter.set(
+      (event.target as HTMLSelectElement).value as FilterablePriority
+    );
+  }
+
+  clearFilters(): void {
+    this.filterQuery.set('');
+    this.statusFilter.set('all');
+    this.priorityFilter.set('all');
   }
 
   onStatusChanged(event: { taskId: string; status: TaskStatus }): void {

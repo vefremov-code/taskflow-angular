@@ -12,47 +12,88 @@
     </div>
   </header>
 
-  <section class="summary-cards" aria-label="Task summary">
+  <section class="summary-cards">
     <div class="card">
       <span class="card-number">{{ totalTasks() }}</span>
       <span class="card-label">Total Tasks</span>
     </div>
 
-    <div class="card card-progress">
+    <div class="card">
       <span class="card-number">{{ inProgressTasks() }}</span>
       <span class="card-label">In Progress</span>
     </div>
 
-    <div class="card card-done">
+    <div class="card">
       <span class="card-number">{{ completedTasks() }}</span>
       <span class="card-label">Completed</span>
     </div>
 
-    @if (criticalTasks() > 0) {
-      <div class="card card-critical">
-        <span class="card-number">{{ criticalTasks() }}</span>
-        <span class="card-label">Critical</span>
+    <div class="card">
+      <span class="card-number">{{ criticalTasks() }}</span>
+      <span class="card-label">Critical</span>
+    </div>
+  </section>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <input
+      type="search"
+      placeholder="Search tasks..."
+      [value]="filterQuery()"
+      (input)="onFilterInput($event)"
+    />
+
+    <select
+      [value]="statusFilter()"
+      (change)="onStatusFilterChange($event)">
+      <option value="all">All statuses</option>
+      <option value="todo">To Do</option>
+      <option value="in-progress">In Progress</option>
+      <option value="done">Done</option>
+      <option value="blocked">Blocked</option>
+    </select>
+
+    <select
+      [value]="priorityFilter()"
+      (change)="onPriorityFilterChange($event)">
+      <option value="all">All priorities</option>
+      <option value="critical">Critical</option>
+      <option value="high">High</option>
+      <option value="medium">Medium</option>
+      <option value="low">Low</option>
+    </select>
+
+    @if (hasActiveFilter()) {
+      <button class="btn-ghost" (click)="clearFilters()">
+        Clear
+      </button>
+    }
+  </div>
+
+  <section class="task-section">
+    <h2>
+      Recent Tasks
+      @if (hasActiveFilter()) {
+        <span class="filter-count">
+          ({{ filteredTasks().length }} / {{ totalTasks() }})
+        </span>
+      }
+    </h2>
+
+    @if (filteredTasks().length === 0) {
+      <div class="empty-state">
+        <p>No tasks found.</p>
+      </div>
+    } @else {
+      <div class="task-list">
+        @for (task of filteredTasks(); track task.id) {
+          <app-task-card
+            [task]="task"
+            (taskSelected)="onTaskSelected($event)"
+            (statusChanged)="onStatusChanged($event)"
+          />
+        }
       </div>
     }
   </section>
-
-  <section class="task-section">
-  <h2>Recent Tasks</h2>
-
-  @if (tasks().length === 0) {
-    <div class="empty-state">
-      <p>No tasks yet. <a routerLink="/tasks/new">Create your first task.</a></p>
-    </div>
-  } @else {
-    <div class="task-list" role="list">
-      @for (task of tasks(); track task.id) {
-        <app-task-card
-          [task]="task"
-          (taskSelected)="onTaskSelected($event)"
-          (statusChanged)="onStatusChanged($event)"
-        />
-      }
-    </div>
-  }
-</section>
 </div>

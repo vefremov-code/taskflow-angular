@@ -82,3 +82,56 @@
     align-items: flex-start;
   }
 }
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 28px;
+  padding: 16px;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.filter-bar input,
+.filter-bar select {
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  padding: 10px 14px;
+  font: inherit;
+  background: white;
+}
+
+.filter-bar input {
+  min-width: 280px;
+  flex: 1;
+}
+
+.btn-ghost {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 14px;
+  cursor: pointer;
+  background: #e2e8f0;
+  color: #334155;
+  font: inherit;
+}
+
+.filter-count {
+  font-size: 1rem;
+  font-weight: 400;
+  color: #64748b;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
