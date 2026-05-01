@@ -8,12 +8,10 @@ import {
 import { DatePipe } from '@angular/common';
 import { Router, RouterLink } from '@angular/router';
 
-import {
-  TaskPriority,
-  TaskStatus
-} from '../../core/models/task.model';
+import { TaskPriority, TaskStatus } from '../../core/models/task.model';
 import { TaskService } from '../../core/services/task.service';
 import { TaskCardComponent } from '../tasks/task-card/task-card.component';
+import { ClickOutsideDirective } from '../../shared/directives/click-outside.directive';
 
 type FilterableStatus = TaskStatus | 'all';
 type FilterablePriority = TaskPriority | 'all';
@@ -21,7 +19,12 @@ type FilterablePriority = TaskPriority | 'all';
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [DatePipe, RouterLink, TaskCardComponent],
+  imports: [
+    DatePipe,
+    RouterLink,
+    TaskCardComponent,
+    ClickOutsideDirective
+  ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -36,8 +39,13 @@ export class DashboardComponent {
   readonly criticalCount = this.taskService.criticalCount;
 
   filterQuery = signal('');
+  highlightQuery = computed(() =>
+  this.filterQuery().trim().length >= 2 ? this.filterQuery() : ''
+);
   statusFilter = signal<FilterableStatus>('all');
   priorityFilter = signal<FilterablePriority>('all');
+
+  isFilterOpen = signal(false);
 
   filteredTasks = computed(() =>
     this.taskService.filterTasks(
@@ -54,6 +62,14 @@ export class DashboardComponent {
   );
 
   today = new Date();
+
+  toggleFilter(): void {
+    this.isFilterOpen.update(isOpen => !isOpen);
+  }
+
+  closeFilter(): void {
+    this.isFilterOpen.set(false);
+  }
 
   onFilterInput(event: Event): void {
     this.filterQuery.set((event.target as HTMLInputElement).value);
