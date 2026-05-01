@@ -12,27 +12,29 @@
     </div>
   </header>
 
-  <section class="summary-cards">
-    <div class="card">
-      <span class="card-number">{{ totalTasks() }}</span>
-      <span class="card-label">Total Tasks</span>
-    </div>
+  <section class="summary-cards" aria-label="Task summary">
+  <div class="card">
+    <span class="card-number">{{ totalCount() }}</span>
+    <span class="card-label">Total Tasks</span>
+  </div>
 
-    <div class="card">
-      <span class="card-number">{{ inProgressTasks() }}</span>
-      <span class="card-label">In Progress</span>
-    </div>
+  <div class="card card-progress">
+    <span class="card-number">{{ inProgressCount() }}</span>
+    <span class="card-label">In Progress</span>
+  </div>
 
-    <div class="card">
-      <span class="card-number">{{ completedTasks() }}</span>
-      <span class="card-label">Completed</span>
-    </div>
+  <div class="card card-done">
+    <span class="card-number">{{ completedCount() }}</span>
+    <span class="card-label">Completed</span>
+  </div>
 
-    <div class="card">
-      <span class="card-number">{{ criticalTasks() }}</span>
+  @if (criticalCount() > 0) {
+    <div class="card card-critical">
+      <span class="card-number">{{ criticalCount() }}</span>
       <span class="card-label">Critical</span>
     </div>
-  </section>
+  }
+</section>
 
   <!-- FILTER BAR -->
   <div class="filter-bar">
@@ -64,7 +66,7 @@
     </select>
 
     @if (hasActiveFilter()) {
-      <button class="btn-ghost" (click)="clearFilters()">
+      <button class="btn-ghost" type="button" (click)="clearFilters()">
         Clear
       </button>
     }
@@ -75,7 +77,7 @@
       Recent Tasks
       @if (hasActiveFilter()) {
         <span class="filter-count">
-          ({{ filteredTasks().length }} / {{ totalTasks() }})
+          ({{ filteredTasks().length }} / {{ totalCount() }})
         </span>
       }
     </h2>
