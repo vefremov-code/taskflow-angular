@@ -1,48 +1,40 @@
-import { Injectable, computed, signal } from '@angular/core';
-import { Task, TaskPriority, TaskStatus } from '../models/task.model';
-
-const generateId = (): string =>
-  Date.now().toString(36) + Math.random().toString(36).substring(2);
+import { computed, inject, Injectable, signal } from '@angular/core';
+import { NotificationService } from './notification.service';
+import { Task, TaskStatus } from '../models/task.model';
 
 const INITIAL_TASKS: Task[] = [
   {
-    id: '1',
-    title: 'Design system audit',
-    description: 'Review all UI components for accessibility compliance',
+    id: 'task-1',
+    title: 'Design dashboard layout',
+    description: 'Create the main dashboard layout for TaskFlow.',
     status: 'in-progress',
     priority: 'high',
-    assigneeId: 'user-1',
-    projectId: 'proj-1',
-    dueDate: new Date(2026, 11, 20),
-    createdAt: new Date(2026, 10, 1),
-    updatedAt: new Date(2026, 11, 10),
-    tags: ['design', 'a11y']
+    dueDate: new Date('2026-05-10'),
+    tags: ['ui', 'dashboard'],
+    createdAt: new Date('2026-04-20'),
+    updatedAt: new Date('2026-04-22')
   },
   {
-    id: '2',
-    title: 'Set up CI/CD pipeline',
-    description: 'Configure GitHub Actions for automated testing and deployment',
+    id: 'task-2',
+    title: 'Build reusable task card',
+    description: 'Create a presentational task card component.',
     status: 'todo',
-    priority: 'critical',
-    assigneeId: 'user-2',
-    projectId: 'proj-1',
-    dueDate: new Date(2026, 11, 15),
-    createdAt: new Date(2026, 11, 1),
-    updatedAt: new Date(2026, 11, 1),
-    tags: ['devops', 'infrastructure']
+    priority: 'medium',
+    dueDate: new Date('2026-05-15'),
+    tags: ['component', 'shared'],
+    createdAt: new Date('2026-04-21'),
+    updatedAt: new Date('2026-04-21')
   },
   {
-    id: '3',
-    title: 'Write unit tests for TaskService',
-    description: 'Achieve 80% coverage on the core task service',
-    status: 'done',
-    priority: 'medium',
-    assigneeId: 'user-1',
-    projectId: 'proj-2',
-    dueDate: null,
-    createdAt: new Date(2026, 10, 20),
-    updatedAt: new Date(2026, 11, 5),
-    tags: ['testing']
+    id: 'task-3',
+    title: 'Add status filtering',
+    description: 'Allow users to filter tasks by status.',
+    status: 'blocked',
+    priority: 'high',
+    dueDate: new Date('2026-05-05'),
+    tags: ['filter', 'state'],
+    createdAt: new Date('2026-04-23'),
+    updatedAt: new Date('2026-04-25')
   }
 ];
 
@@ -50,99 +42,92 @@ const INITIAL_TASKS: Task[] = [
   providedIn: 'root'
 })
 export class TaskService {
-  private readonly _tasks = signal<Task[]>(INITIAL_TASKS);
+  private notificationService = inject(NotificationService);
 
+  private _tasks = signal<Task[]>(INITIAL_TASKS);
   readonly tasks = this._tasks.asReadonly();
+
+  private _selectedTaskId = signal<string | null>(null);
+  readonly selectedTaskId = this._selectedTaskId.asReadonly();
+
+  readonly selectedTask = computed(() => {
+    const id = this._selectedTaskId();
+
+    if (!id) {
+      return null;
+    }
+
+    return this._tasks().find(task => task.id === id) ?? null;
+  });
+
+  readonly hasSelection = computed(() => this._selectedTaskId() !== null);
 
   readonly totalCount = computed(() => this._tasks().length);
 
-  readonly completedCount = computed(() =>
-    this._tasks().filter(task => task.status === 'done').length
+  readonly todoCount = computed(() =>
+    this._tasks().filter(task => task.status === 'todo').length
   );
 
   readonly inProgressCount = computed(() =>
     this._tasks().filter(task => task.status === 'in-progress').length
   );
 
-  readonly criticalCount = computed(() =>
-    this._tasks().filter(task => task.priority === 'critical').length
+  readonly doneCount = computed(() =>
+    this._tasks().filter(task => task.status === 'done').length
   );
 
-  readonly overdueCount = computed(() => {
-    const now = new Date();
+  readonly blockedCount = computed(() =>
+    this._tasks().filter(task => task.status === 'blocked').length
+  );
 
-    return this._tasks().filter(task =>
-      task.dueDate !== null &&
-      task.dueDate < now &&
-      task.status !== 'done'
-    ).length;
-  });
-
-  getById(id: string): Task | undefined {
-    return this._tasks().find(task => task.id === id);
+  selectTask(id: string): void {
+    this._selectedTaskId.set(id);
   }
 
-  filterTasks(
-    query: string,
-    status: TaskStatus | 'all',
-    priority: TaskPriority | 'all'
-  ): Task[] {
-    const normalizedQuery = query.toLowerCase().trim();
-
-    return this._tasks().filter(task => {
-      const matchesQuery =
-        !normalizedQuery ||
-        task.title.toLowerCase().includes(normalizedQuery) ||
-        task.description.toLowerCase().includes(normalizedQuery) ||
-        task.tags.some(tag => tag.toLowerCase().includes(normalizedQuery));
-
-      const matchesStatus =
-        status === 'all' || task.status === status;
-
-      const matchesPriority =
-        priority === 'all' || task.priority === priority;
-
-      return matchesQuery && matchesStatus && matchesPriority;
-    });
-  }
-
-  addTask(data: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Task {
-    const newTask: Task = {
-      ...data,
-      id: generateId(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    this._tasks.update(tasks => [...tasks, newTask]);
-
-    return newTask;
-  }
-
-  updateTask(
-    id: string,
-    changes: Partial<Omit<Task, 'id' | 'createdAt'>>
-  ): void {
-    this._tasks.update(tasks =>
-      tasks.map(task =>
-        task.id === id
-          ? { ...task, ...changes, updatedAt: new Date() }
-          : task
-      )
-    );
+  clearSelection(): void {
+    this._selectedTaskId.set(null);
   }
 
   updateStatus(taskId: string, status: TaskStatus): void {
-    this.updateTask(taskId, { status });
+    const task = this._tasks().find(item => item.id === taskId);
+
+    if (!task) {
+      return;
+    }
+
+    this._tasks.update(tasks =>
+      tasks.map(item =>
+        item.id === taskId
+          ? {
+              ...item,
+              status,
+              updatedAt: new Date()
+            }
+          : item
+      )
+    );
+
+    if (status === 'done') {
+      this.notificationService.success(`${task.title} marked as complete`);
+    }
+
+    if (status === 'blocked') {
+      this.notificationService.error(
+        `${task.title} is blocked — review required`,
+        8000
+      );
+    }
   }
 
   deleteTask(id: string): void {
-    this._tasks.update(tasks =>
-      tasks.filter(task => task.id !== id)
-    );
+    this._tasks.update(tasks => tasks.filter(task => task.id !== id));
+
+    if (this._selectedTaskId() === id) {
+      this.clearSelection();
+    }
   }
 
-  setTasks(tasks: Task[]): void {
-    this._tasks.set(tasks);
+  addTask(task: Task): void {
+    this._tasks.update(tasks => [...tasks, task]);
   }
 }

@@ -132,6 +132,7 @@
         @for (task of filteredTasks(); track task.id) {
           <app-task-card
             [task]="task"
+            [isSelected]="task.id === taskService.selectedTaskId()"
             [highlightTerm]="highlightQuery()"
             (taskSelected)="onTaskSelected($event)"
             (statusChanged)="onStatusChanged($event)"
@@ -140,4 +141,8 @@
       </div>
     }
   </section>
+
+  @if (taskService.hasSelection()) {
+    <app-task-detail />
+  }
 </div>

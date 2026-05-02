@@ -1,186 +1,179 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  input,
-  output
-} from '@angular/core';
-import { DatePipe, NgClass } from '@angular/common';
-
+import { NgClass } from '@angular/common';
+import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
 import { Task, TaskStatus } from '../../../core/models/task.model';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
-import { HighlightDirective } from '../../../shared/directives/highlight.directive';
 
 @Component({
   selector: 'app-task-card',
   standalone: true,
-  imports: [
-    DatePipe,
-    NgClass,
-    StatusBadgeComponent,
-    HighlightDirective
-  ],
+  imports: [NgClass, StatusBadgeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <article class="task-card" [ngClass]="'priority-' + task().priority">
-      <div class="task-card__status">
-        <app-status-badge [status]="task().status" />
-      </div>
-
-      <div class="task-card__content">
-        <h3
-          class="task-card__title"
-          [appHighlight]="highlightTerm()"
-          [highlightText]="task().title"
-        ></h3>
-
-        <p
-          class="task-card__description"
-          [appHighlight]="highlightTerm()"
-          [highlightText]="task().description"
-        ></p>
-
-        <div class="task-card__meta">
-          @if (task().dueDate) {
-            <span class="task-card__due-date">
-              Due: {{ task().dueDate | date:'MMM d' }}
-            </span>
-          }
-
-          <div class="task-card__tags">
-            @for (tag of task().tags; track tag) {
-              <span class="task-card__tag">{{ tag }}</span>
-            }
-          </div>
+    <article
+      class="task-card"
+      [class.task-card--selected]="isSelected()"
+      (click)="selectTask()"
+    >
+      <header class="task-card__header">
+        <div>
+          <h3 class="task-card__title">{{ task().title }}</h3>
+          <p class="task-card__description">{{ task().description }}</p>
         </div>
-      </div>
 
-      <div class="task-card__actions">
-        <button
-          class="btn-secondary"
-          type="button"
-          (click)="handleSelect()"
-        >
-          View
-        </button>
+        <app-status-badge [status]="task().status" />
+      </header>
 
-        @if (task().status !== 'done') {
-          <button
-            class="btn-primary"
-            type="button"
-            (click)="handleDone()"
-          >
-            Mark done
-          </button>
+      <div class="task-card__meta">
+        <span [ngClass]="'priority priority--' + task().priority">
+          {{ task().priority }}
+        </span>
+
+        @for (tag of task().tags; track tag) {
+          <span class="tag">{{ tag }}</span>
         }
       </div>
+
+      <footer class="task-card__actions" (click)="$event.stopPropagation()">
+        <button
+          type="button"
+          (click)="changeStatus('todo')"
+        >
+          Todo
+        </button>
+
+        <button
+          type="button"
+          (click)="changeStatus('in-progress')"
+        >
+          In Progress
+        </button>
+
+        <button
+          type="button"
+          (click)="changeStatus('done')"
+        >
+          Done
+        </button>
+
+        <button
+          type="button"
+          (click)="changeStatus('blocked')"
+        >
+          Blocked
+        </button>
+      </footer>
     </article>
   `,
   styles: [`
-    :host {
-      display: block;
+    .task-card {
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 0.9rem;
+      padding: 1rem;
+      cursor: pointer;
+      transition:
+        border-color 160ms ease,
+        box-shadow 160ms ease,
+        transform 160ms ease;
     }
 
-    .task-card {
-      display: grid;
-      grid-template-columns: 140px 1fr auto;
-      gap: 16px;
-      align-items: start;
-      padding: 16px;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      background: white;
+    .task-card:hover {
+      border-color: #93c5fd;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+      transform: translateY(-1px);
+    }
+
+    .task-card--selected {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+    }
+
+    .task-card__header {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
     }
 
     .task-card__title {
-      margin: 0 0 6px;
-      font-size: 1.5rem;
-      font-weight: 600;
+      margin: 0;
+      font-size: 1.05rem;
     }
 
     .task-card__description {
-      margin: 0 0 10px;
-      color: #555;
+      margin: 0.35rem 0 0;
+      color: #6b7280;
+      line-height: 1.5;
     }
 
     .task-card__meta {
       display: flex;
       flex-wrap: wrap;
-      gap: 10px;
-      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1rem;
     }
 
-    .task-card__tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .task-card__tag {
-      display: inline-block;
+    .priority,
+    .tag {
+      padding: 0.25rem 0.55rem;
       border-radius: 999px;
-      padding: 6px 10px;
-      background: #f1f5f9;
-      font-size: 0.9rem;
+      font-size: 0.8rem;
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .priority--high {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .priority--medium {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .priority--low {
+      background: #dcfce7;
+      color: #166534;
     }
 
     .task-card__actions {
       display: flex;
-      gap: 10px;
-      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
     }
 
-    .btn-primary,
-    .btn-secondary {
-      border: none;
-      border-radius: 999px;
-      padding: 8px 14px;
+    .task-card__actions button {
+      border: 0;
+      border-radius: 0.5rem;
+      background: #f3f4f6;
+      padding: 0.45rem 0.7rem;
       cursor: pointer;
       font: inherit;
+      font-size: 0.85rem;
     }
 
-    .btn-primary {
-      background: #2563eb;
-      color: white;
-    }
-
-    .btn-secondary {
-      background: #eef2ff;
-      color: #1e3a8a;
-    }
-
-    mark,
-    .highlight-match {
-      background: #fef08a;
-      border-radius: 4px;
-      padding: 0 2px;
-    }
-
-    @media (max-width: 768px) {
-      .task-card {
-        grid-template-columns: 1fr;
-      }
-
-      .task-card__actions {
-        justify-content: flex-start;
-      }
+    .task-card__actions button:hover {
+      background: #e5e7eb;
     }
   `]
 })
 export class TaskCardComponent {
-  task = input.required<Task>();
-  highlightTerm = input('');
+  readonly task = input.required<Task>();
+  readonly isSelected = input(false);
+  readonly highlightTerm = input('');
 
-  taskSelected = output<string>();
-  statusChanged = output<{ taskId: string; status: TaskStatus }>();
+  readonly taskSelected = output<string>();
+  readonly statusChanged = output<{ taskId: string; status: TaskStatus }>();
 
-  handleSelect(): void {
+  selectTask(): void {
     this.taskSelected.emit(this.task().id);
   }
 
-  handleDone(): void {
+  changeStatus(status: TaskStatus): void {
     this.statusChanged.emit({
       taskId: this.task().id,
-      status: 'done'
+      status
     });
   }
 }
