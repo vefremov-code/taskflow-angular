@@ -9,7 +9,7 @@ import {
 import { RouterLink } from '@angular/router';
 
 import { TaskService } from '../../core/services/task.service';
-import { TaskStatus } from '../../core/models/task.model';
+import { TaskPriority, TaskStatus } from '../../core/models/task.model';
 
 import { TaskCardComponent } from '../tasks/task-card/task-card.component';
 import { TaskDetailComponent } from '../tasks/task-detail/task-detail.component';
@@ -36,13 +36,15 @@ export class DashboardComponent {
 
   readonly filterQuery = signal('');
   readonly statusFilter = signal<'all' | TaskStatus>('all');
-  readonly priorityFilter = signal<'all' | 'critical' | 'high' | 'medium' | 'low'>('all');
+  readonly priorityFilter = signal<'all' | TaskPriority>('all');
   readonly isFilterOpen = signal(false);
 
   readonly totalCount = this.taskService.totalCount;
   readonly inProgressCount = this.taskService.inProgressCount;
   readonly completedCount = this.taskService.doneCount;
-  readonly criticalCount = this.taskService.blockedCount;
+  readonly criticalCount = computed(() =>
+    this.taskService.tasks().filter(task => task.priority === 'critical').length
+  );
 
   readonly highlightQuery = computed(() => this.filterQuery().trim());
 
@@ -85,13 +87,7 @@ export class DashboardComponent {
   }
 
   onPriorityFilterChange(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value as
-      | 'all'
-      | 'critical'
-      | 'high'
-      | 'medium'
-      | 'low';
-
+    const value = (event.target as HTMLSelectElement).value as 'all' | TaskPriority;
     this.priorityFilter.set(value);
   }
 

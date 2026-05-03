@@ -7,7 +7,8 @@ export type TaskStatus =
 export type TaskPriority =
   | 'low'
   | 'medium'
-  | 'high';
+  | 'high'
+  | 'critical';
 
 export interface Task {
   id: string;
@@ -28,3 +29,7 @@ export interface Task {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type CreateTaskData = Omit<Task, 'id' | 'createdAt' | 'updatedAt'>;
+
+export type UpdateTaskData = Partial<CreateTaskData>;

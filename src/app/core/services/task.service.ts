@@ -1,6 +1,11 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { NotificationService } from './notification.service';
-import { Task, TaskStatus } from '../models/task.model';
+import {
+  CreateTaskData,
+  Task,
+  TaskStatus,
+  UpdateTaskData
+} from '../models/task.model';
 
 const INITIAL_TASKS: Task[] = [
   {
@@ -88,6 +93,57 @@ export class TaskService {
     this._selectedTaskId.set(null);
   }
 
+  getTaskById(id: string): Task | null {
+    return this._tasks().find(task => task.id === id) ?? null;
+  }
+
+  titleExists(title: string, excludeTaskId?: string): boolean {
+    const normalized = title.trim().toLowerCase();
+
+    return this._tasks().some(task =>
+      task.title.trim().toLowerCase() === normalized &&
+      task.id !== excludeTaskId
+    );
+  }
+
+  addTask(data: CreateTaskData): Task {
+    const now = new Date();
+
+    const task: Task = {
+      ...data,
+      id: crypto.randomUUID(),
+      createdAt: now,
+      updatedAt: now
+    };
+
+    this._tasks.update(tasks => [...tasks, task]);
+    this.notificationService.success('Task created successfully');
+
+    return task;
+  }
+
+  updateTask(id: string, changes: UpdateTaskData): Task | null {
+    const existing = this.getTaskById(id);
+
+    if (!existing) {
+      return null;
+    }
+
+    const updated: Task = {
+      ...existing,
+      ...changes,
+      updatedAt: new Date()
+    };
+
+    this._tasks.update(tasks =>
+      tasks.map(task => task.id === id ? updated : task)
+    );
+
+    this.notificationService.success('Task updated successfully');
+
+    return updated;
+  }
+
   updateStatus(taskId: string, status: TaskStatus): void {
     const task = this._tasks().find(item => item.id === taskId);
 
@@ -120,14 +176,16 @@ export class TaskService {
   }
 
   deleteTask(id: string): void {
-    this._tasks.update(tasks => tasks.filter(task => task.id !== id));
+    const task = this.getTaskById(id);
+
+    this._tasks.update(tasks => tasks.filter(item => item.id !== id));
 
     if (this._selectedTaskId() === id) {
       this.clearSelection();
     }
-  }
 
-  addTask(task: Task): void {
-    this._tasks.update(tasks => [...tasks, task]);
+    if (task) {
+      this.notificationService.success(`${task.title} deleted`);
+    }
   }
 }

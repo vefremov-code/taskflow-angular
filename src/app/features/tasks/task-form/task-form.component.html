@@ -1,0 +1,266 @@
+<div class="task-form-page">
+  <header class="task-form-header">
+    <div>
+      <h1>{{ mode() }} Task</h1>
+      <p>Create a new TaskFlow task using a fully reactive Angular form.</p>
+    </div>
+
+    <button
+      type="button"
+      class="btn-ghost"
+      (click)="onCancel()"
+    >
+      Back to Dashboard
+    </button>
+  </header>
+
+  <form
+    class="task-form"
+    [formGroup]="form"
+    (ngSubmit)="onSubmit()"
+    novalidate
+  >
+    <fieldset class="form-section">
+      <legend>Task Details</legend>
+
+      <div
+        class="field"
+        [class.field--error]="getControlError('title')"
+      >
+        <label for="task-title">
+          Title <span class="required" aria-hidden="true">*</span>
+        </label>
+
+        <input
+          id="task-title"
+          type="text"
+          formControlName="title"
+          autocomplete="off"
+          placeholder="e.g. Design system audit"
+          [attr.aria-invalid]="titleCtrl.invalid && titleCtrl.touched"
+          aria-describedby="title-hint title-error"
+        />
+
+        <span id="title-hint" class="field__hint">
+          3–100 characters. Duplicate titles are not allowed.
+        </span>
+
+        @if (titleCtrl.pending) {
+          <span class="field__pending" aria-live="polite">
+            Checking for duplicates...
+          </span>
+        }
+
+        @if (getControlError('title')) {
+          <span id="title-error" class="field__error" role="alert">
+            {{ getControlError('title') }}
+          </span>
+        }
+      </div>
+
+      <div
+        class="field"
+        [class.field--error]="getControlError('description')"
+      >
+        <label for="task-description">Description</label>
+
+        <textarea
+          id="task-description"
+          formControlName="description"
+          rows="4"
+          placeholder="Provide additional context..."
+          [attr.aria-invalid]="descriptionCtrl.invalid && descriptionCtrl.touched"
+          aria-describedby="description-error"
+        ></textarea>
+
+        @if (getControlError('description')) {
+          <span id="description-error" class="field__error" role="alert">
+            {{ getControlError('description') }}
+          </span>
+        }
+      </div>
+    </fieldset>
+
+    <fieldset class="form-section">
+      <legend>Priority, Status, and Timeline</legend>
+
+      <div class="field-row">
+        <div
+          class="field"
+          [class.field--error]="getControlError('priority')"
+        >
+          <label for="task-priority">
+            Priority <span class="required" aria-hidden="true">*</span>
+          </label>
+
+          <select
+            id="task-priority"
+            formControlName="priority"
+            [attr.aria-invalid]="priorityCtrl.invalid && priorityCtrl.touched"
+            aria-describedby="priority-error"
+          >
+            @for (option of priorityOptions; track option.value) {
+              <option [value]="option.value">
+                {{ option.label }}
+              </option>
+            }
+          </select>
+
+          @if (getControlError('priority')) {
+            <span id="priority-error" class="field__error" role="alert">
+              {{ getControlError('priority') }}
+            </span>
+          }
+        </div>
+
+        <div
+          class="field"
+          [class.field--error]="getControlError('status')"
+        >
+          <label for="task-status">
+            Status <span class="required" aria-hidden="true">*</span>
+          </label>
+
+          <select
+            id="task-status"
+            formControlName="status"
+            [attr.aria-invalid]="statusCtrl.invalid && statusCtrl.touched"
+            aria-describedby="status-error"
+          >
+            @for (option of statusOptions; track option.value) {
+              <option [value]="option.value">
+                {{ option.label }}
+              </option>
+            }
+          </select>
+
+          @if (getControlError('status')) {
+            <span id="status-error" class="field__error" role="alert">
+              {{ getControlError('status') }}
+            </span>
+          }
+        </div>
+
+        <div
+          class="field"
+          [class.field--error]="getControlError('dueDate')"
+        >
+          <label for="task-due-date">
+            Due Date
+
+            @if (priorityCtrl.value === 'critical') {
+              <span class="required" aria-hidden="true">*</span>
+            }
+          </label>
+
+          <input
+            id="task-due-date"
+            type="date"
+            formControlName="dueDate"
+            [attr.aria-invalid]="dueDateCtrl.invalid && dueDateCtrl.touched"
+            aria-describedby="due-date-hint due-date-error"
+          />
+
+          <span id="due-date-hint" class="field__hint">
+            Required when priority is Critical.
+          </span>
+
+          @if (getControlError('dueDate')) {
+            <span id="due-date-error" class="field__error" role="alert">
+              {{ getControlError('dueDate') }}
+            </span>
+          }
+        </div>
+      </div>
+    </fieldset>
+
+    <fieldset class="form-section" formArrayName="tags">
+      <legend>Tags</legend>
+
+      <p class="field__hint">
+        Add labels to categorize this task. Use lowercase letters, numbers, and hyphens only.
+      </p>
+
+      <div class="tags-list">
+        @for (control of tagsArray.controls; track $index; let i = $index) {
+          <div class="tag-row">
+            <div class="field tag-field">
+              <label class="visually-hidden" [for]="'task-tag-' + i">
+                Tag {{ i + 1 }}
+              </label>
+
+              <input
+                [id]="'task-tag-' + i"
+                type="text"
+                [formControlName]="i"
+                [attr.aria-label]="'Tag ' + (i + 1)"
+                [attr.aria-invalid]="control.invalid && control.touched"
+                [attr.aria-describedby]="'tag-error-' + i"
+                placeholder="e.g. frontend"
+              />
+
+              @if (getTagError(i)) {
+                <span
+                  [id]="'tag-error-' + i"
+                  class="field__error"
+                  role="alert"
+                >
+                  {{ getTagError(i) }}
+                </span>
+              }
+            </div>
+
+            <button
+              type="button"
+              class="btn-icon btn-remove"
+              (click)="removeTag(i)"
+              [attr.aria-label]="'Remove tag ' + (i + 1)"
+            >
+              ✕
+            </button>
+          </div>
+        }
+      </div>
+
+      <button
+        type="button"
+        class="btn-ghost"
+        (click)="addTag()"
+        [disabled]="tagsArray.length >= 10"
+      >
+        + Add Tag
+      </button>
+    </fieldset>
+
+    @if (submitError()) {
+      <div class="form-error" role="alert" aria-live="assertive">
+        {{ submitError() }}
+      </div>
+    }
+
+    <div class="form-actions">
+      <button
+        type="button"
+        class="btn-ghost"
+        (click)="onCancel()"
+        [disabled]="isSubmitting()"
+      >
+        Cancel
+      </button>
+
+      <button
+        type="submit"
+        class="btn-primary"
+        [disabled]="form.invalid || isSubmitting()"
+        [attr.aria-busy]="isSubmitting()"
+      >
+        @if (isSubmitting()) {
+          <span aria-hidden="true">Saving...</span>
+          <span class="visually-hidden">Saving, please wait</span>
+        } @else {
+          Create Task
+        }
+      </button>
+    </div>
+  </form>
+</div>
