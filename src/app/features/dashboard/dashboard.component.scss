@@ -24,16 +24,27 @@
 .header-actions {
   display: flex;
   align-items: center;
+  gap: 10px;
 }
 
-.btn-primary {
+.btn-primary,
+.btn-ghost {
   border: none;
   border-radius: 999px;
   padding: 10px 16px;
   cursor: pointer;
+  font: inherit;
+  text-decoration: none;
+}
+
+.btn-primary {
   background: #2563eb;
   color: white;
-  font: inherit;
+}
+
+.btn-ghost {
+  background: #e2e8f0;
+  color: #334155;
 }
 
 .summary-cards {
@@ -76,13 +87,6 @@
   background: #f8fafc;
 }
 
-@media (max-width: 768px) {
-  .dashboard-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
-
 .filter-bar {
   display: flex;
   flex-wrap: wrap;
@@ -106,16 +110,6 @@
 .filter-bar input {
   min-width: 280px;
   flex: 1;
-}
-
-.btn-ghost {
-  border: none;
-  border-radius: 999px;
-  padding: 10px 14px;
-  cursor: pointer;
-  background: #e2e8f0;
-  color: #334155;
-  font: inherit;
 }
 
 .filter-count {
@@ -168,4 +162,15 @@
   padding: 10px 14px;
   font: inherit;
   background: white;
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+  }
 }

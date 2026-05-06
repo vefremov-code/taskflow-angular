@@ -1,12 +1,14 @@
 import { DatePipe, NgClass, TitleCasePipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
+
 import { TaskService } from '../../../core/services/task.service';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
 
 @Component({
   selector: 'app-task-detail',
   standalone: true,
-  imports: [DatePipe, NgClass, TitleCasePipe, StatusBadgeComponent],
+  imports: [DatePipe, NgClass, RouterLink, TitleCasePipe, StatusBadgeComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (task()) {
@@ -71,6 +73,14 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
             </button>
           }
 
+          <a class="btn-secondary" [routerLink]="['/tasks', task()!.id]">
+            View Full Detail
+          </a>
+
+          <a class="btn-secondary" [routerLink]="['/tasks', task()!.id, 'edit']">
+            Edit
+          </a>
+
           <button
             type="button"
             class="btn-danger"
@@ -127,7 +137,8 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       color: #b45309;
     }
 
-    .text-high {
+    .text-high,
+    .text-critical {
       color: #b91c1c;
     }
 
@@ -153,17 +164,20 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 
     .task-detail__actions {
       display: flex;
+      flex-wrap: wrap;
       gap: 0.75rem;
       margin-top: 1.25rem;
     }
 
     .btn-icon,
     .btn-primary,
+    .btn-secondary,
     .btn-danger {
       cursor: pointer;
       border: 0;
       border-radius: 0.6rem;
       font: inherit;
+      text-decoration: none;
     }
 
     .btn-icon {
@@ -175,6 +189,13 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
       background: #2563eb;
       color: white;
       padding: 0.65rem 1rem;
+    }
+
+    .btn-secondary {
+      background: #e2e8f0;
+      color: #334155;
+      padding: 0.65rem 1rem;
+      font-weight: 600;
     }
 
     .btn-danger {

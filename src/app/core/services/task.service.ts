@@ -97,6 +97,10 @@ export class TaskService {
     return this._tasks().find(task => task.id === id) ?? null;
   }
 
+  getById(id: string): Task | null {
+    return this.getTaskById(id);
+  }
+
   titleExists(title: string, excludeTaskId?: string): boolean {
     const normalized = title.trim().toLowerCase();
 

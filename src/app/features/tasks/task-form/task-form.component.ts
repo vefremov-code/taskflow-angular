@@ -1,4 +1,15 @@
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  DestroyRef,
+  computed,
+  effect,
+  inject,
+  input,
+  output,
+  signal
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   AsyncValidatorFn,
@@ -8,14 +19,14 @@ import {
   ReactiveFormsModule,
   Validators
 } from '@angular/forms';
-import { Router } from '@angular/router';
 import { of } from 'rxjs';
 
 import {
   CreateTaskData,
   Task,
   TaskPriority,
-  TaskStatus
+  TaskStatus,
+  UpdateTaskData
 } from '../../../core/models/task.model';
 import { TaskService } from '../../../core/services/task.service';
 
@@ -30,12 +41,16 @@ import { TaskService } from '../../../core/services/task.service';
 export class TaskFormComponent {
   private readonly fb = inject(FormBuilder);
   private readonly taskService = inject(TaskService);
-  private readonly router = inject(Router);
+  private readonly destroyRef = inject(DestroyRef);
+
+  readonly task = input<Task | null>(null);
+  readonly saved = output<Task>();
+  readonly cancelled = output<void>();
 
   readonly isSubmitting = signal(false);
   readonly submitError = signal<string | null>(null);
 
-  readonly mode = computed(() => 'Create');
+  readonly mode = computed(() => this.task() ? 'Edit' : 'Create');
 
   readonly priorityOptions: { value: TaskPriority; label: string }[] = [
     { value: 'low', label: 'Low' },
@@ -81,14 +96,20 @@ export class TaskFormComponent {
   });
 
   constructor() {
-    this.priorityCtrl.valueChanges.subscribe(priority => {
-      if (priority === 'critical') {
-        this.dueDateCtrl.setValidators([Validators.required]);
-      } else {
-        this.dueDateCtrl.clearValidators();
-      }
+    this.priorityCtrl.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(priority => {
+        if (priority === 'critical') {
+          this.dueDateCtrl.setValidators([Validators.required]);
+        } else {
+          this.dueDateCtrl.clearValidators();
+        }
 
-      this.dueDateCtrl.updateValueAndValidity();
+        this.dueDateCtrl.updateValueAndValidity();
+      });
+
+    effect(() => {
+      this.patchFromTask(this.task());
     });
   }
 
@@ -132,6 +153,7 @@ export class TaskFormComponent {
 
   removeTag(index: number): void {
     this.tagsArray.removeAt(index);
+    this.form.markAsDirty();
   }
 
   async onSubmit(): Promise<void> {
@@ -159,9 +181,22 @@ export class TaskFormComponent {
     };
 
     try {
-      const savedTask: Task = this.taskService.addTask(taskData);
+      const existingTask = this.task();
+      let savedTask: Task | null;
+
+      if (existingTask) {
+        savedTask = this.taskService.updateTask(existingTask.id, taskData as UpdateTaskData);
+      } else {
+        savedTask = this.taskService.addTask(taskData);
+      }
+
+      if (!savedTask) {
+        throw new Error('Unable to save task. Please try again.');
+      }
+
       this.taskService.selectTask(savedTask.id);
-      await this.router.navigate(['/dashboard']);
+      this.form.markAsPristine();
+      this.saved.emit(savedTask);
     } catch (error) {
       this.submitError.set(
         error instanceof Error
@@ -173,8 +208,12 @@ export class TaskFormComponent {
     }
   }
 
-  async onCancel(): Promise<void> {
-    await this.router.navigate(['/dashboard']);
+  onCancel(): void {
+    this.cancelled.emit();
+  }
+
+  hasUnsavedChanges(): boolean {
+    return this.form.dirty && !this.isSubmitting();
   }
 
   getControlError(controlName: string): string {
@@ -233,6 +272,34 @@ export class TaskFormComponent {
     return 'Invalid tag.';
   }
 
+  private patchFromTask(task: Task | null): void {
+    this.tagsArray.clear();
+
+    if (!task) {
+      this.form.reset({
+        title: '',
+        description: '',
+        priority: 'medium',
+        status: 'todo',
+        dueDate: '',
+        tags: []
+      });
+      this.form.markAsPristine();
+      return;
+    }
+
+    this.form.patchValue({
+      title: task.title,
+      description: task.description,
+      priority: task.priority,
+      status: task.status,
+      dueDate: task.dueDate ? task.dueDate.toISOString().split('T')[0] : ''
+    });
+
+    task.tags.forEach(tag => this.addTag(tag));
+    this.form.markAsPristine();
+  }
+
   private duplicateTitleValidator(): AsyncValidatorFn {
     return (control: AbstractControl) => {
       const value = String(control.value ?? '').trim();
@@ -241,7 +308,7 @@ export class TaskFormComponent {
         return of(null);
       }
 
-      const exists = this.taskService.titleExists(value);
+      const exists = this.taskService.titleExists(value, this.task()?.id);
 
       return of(exists ? { duplicate: true } : null);
     };

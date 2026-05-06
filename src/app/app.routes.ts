@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 
+import { authGuard, roleGuard } from './core/guards/auth.guard';
+
 export const routes: Routes = [
   {
     path: '',
@@ -14,14 +16,39 @@ export const routes: Routes = [
     title: 'Dashboard — TaskFlow'
   },
   {
-    path: 'tasks/new',
+    path: 'tasks',
+    canActivate: [authGuard],
+    loadChildren: () =>
+      import('./features/tasks/tasks.routes')
+        .then(m => m.TASK_ROUTES),
+    data: { preload: true }
+  },
+  {
+    path: 'admin',
+    canActivate: [authGuard, roleGuard],
+    data: { requiredRole: 'admin' },
+    loadChildren: () =>
+      import('./features/admin/admin.routes')
+        .then(m => m.ADMIN_ROUTES)
+  },
+  {
+    path: 'auth',
+    loadChildren: () =>
+      import('./features/auth/auth.routes')
+        .then(m => m.AUTH_ROUTES)
+  },
+  {
+    path: 'access-denied',
     loadComponent: () =>
-      import('./features/tasks/task-form/task-form.component')
-        .then(m => m.TaskFormComponent),
-    title: 'New Task — TaskFlow'
+      import('./shared/components/access-denied/access-denied.component')
+        .then(m => m.AccessDeniedComponent),
+    title: 'Access Denied — TaskFlow'
   },
   {
     path: '**',
-    redirectTo: 'dashboard'
+    loadComponent: () =>
+      import('./shared/components/not-found/not-found.component')
+        .then(m => m.NotFoundComponent),
+    title: 'Page Not Found — TaskFlow'
   }
 ];

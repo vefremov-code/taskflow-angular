@@ -2,7 +2,13 @@
   <header class="task-form-header">
     <div>
       <h1>{{ mode() }} Task</h1>
-      <p>Create a new TaskFlow task using a fully reactive Angular form.</p>
+      <p>
+        @if (mode() === 'Edit') {
+          Update this task through the same reusable reactive form component.
+        } @else {
+          Create a new TaskFlow task using a fully reactive Angular form.
+        }
+      </p>
     </div>
 
     <button
@@ -10,7 +16,7 @@
       class="btn-ghost"
       (click)="onCancel()"
     >
-      Back to Dashboard
+      Back to Tasks
     </button>
   </header>
 
@@ -258,7 +264,7 @@
           <span aria-hidden="true">Saving...</span>
           <span class="visually-hidden">Saving, please wait</span>
         } @else {
-          Create Task
+          {{ mode() === 'Edit' ? 'Save Changes' : 'Create Task' }}
         }
       </button>
     </div>
