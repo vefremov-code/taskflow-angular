@@ -32,6 +32,13 @@ import { TaskService } from '../../../core/services/task.service';
         </a>
 
         <a
+          routerLink="/signals"
+          routerLinkActive="navbar__link--active"
+        >
+          Signals
+        </a>
+
+        <a
           routerLink="/admin"
           routerLinkActive="navbar__link--active"
         >
@@ -46,6 +53,10 @@ import { TaskService } from '../../../core/services/task.service';
 
         <span class="navbar__badge">
           Done: {{ taskService.doneCount() }}
+        </span>
+
+        <span class="navbar__badge">
+          Complete: {{ taskService.completionRate() }}%
         </span>
 
         <button

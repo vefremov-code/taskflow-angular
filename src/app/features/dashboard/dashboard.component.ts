@@ -42,9 +42,7 @@ export class DashboardComponent {
   readonly totalCount = this.taskService.totalCount;
   readonly inProgressCount = this.taskService.inProgressCount;
   readonly completedCount = this.taskService.doneCount;
-  readonly criticalCount = computed(() =>
-    this.taskService.tasks().filter(task => task.priority === 'critical').length
-  );
+  readonly criticalCount = this.taskService.criticalCount;
 
   readonly highlightQuery = computed(() => this.filterQuery().trim());
 

@@ -16,6 +16,13 @@ export const routes: Routes = [
     title: 'Dashboard — TaskFlow'
   },
   {
+    path: 'signals',
+    loadComponent: () =>
+      import('./features/signals/signal-inspector.component')
+        .then(m => m.SignalInspectorComponent),
+    title: 'Signals — TaskFlow'
+  },
+  {
     path: 'tasks',
     canActivate: [authGuard],
     loadChildren: () =>

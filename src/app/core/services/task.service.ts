@@ -43,13 +43,23 @@ const INITIAL_TASKS: Task[] = [
   }
 ];
 
+function cloneInitialTasks(): Task[] {
+  return INITIAL_TASKS.map(task => ({
+    ...task,
+    dueDate: task.dueDate ? new Date(task.dueDate) : null,
+    createdAt: new Date(task.createdAt),
+    updatedAt: new Date(task.updatedAt),
+    tags: [...task.tags]
+  }));
+}
+
 @Injectable({
   providedIn: 'root'
 })
 export class TaskService {
   private notificationService = inject(NotificationService);
 
-  private _tasks = signal<Task[]>(INITIAL_TASKS);
+  private _tasks = signal<Task[]>(cloneInitialTasks());
   readonly tasks = this._tasks.asReadonly();
 
   private _selectedTaskId = signal<string | null>(null);
@@ -85,8 +95,93 @@ export class TaskService {
     this._tasks().filter(task => task.status === 'blocked').length
   );
 
+  readonly completedCount = this.doneCount;
+
+  readonly criticalCount = computed(() =>
+    this._tasks().filter(task => task.priority === 'critical').length
+  );
+
+  readonly highPriorityCount = computed(() =>
+    this._tasks().filter(task => task.priority === 'high').length
+  );
+
+  readonly overdueCount = computed(() => {
+    const now = new Date();
+
+    return this._tasks().filter(task =>
+      task.dueDate !== null &&
+      task.dueDate < now &&
+      task.status !== 'done'
+    ).length;
+  });
+
+  readonly hasOverdueTasks = computed(() => this.overdueCount() > 0);
+
+  readonly completionRate = computed(() => {
+    const total = this.totalCount();
+
+    if (total === 0) {
+      return 0;
+    }
+
+    return Math.round((this.doneCount() / total) * 100);
+  });
+
+  readonly statusSummary = computed(() => [
+    {
+      label: 'To Do',
+      status: 'todo' as TaskStatus,
+      count: this.todoCount()
+    },
+    {
+      label: 'In Progress',
+      status: 'in-progress' as TaskStatus,
+      count: this.inProgressCount()
+    },
+    {
+      label: 'Done',
+      status: 'done' as TaskStatus,
+      count: this.doneCount()
+    },
+    {
+      label: 'Blocked',
+      status: 'blocked' as TaskStatus,
+      count: this.blockedCount()
+    }
+  ]);
+
+  readonly signalSnapshot = computed(() => ({
+    total: this.totalCount(),
+    todo: this.todoCount(),
+    inProgress: this.inProgressCount(),
+    done: this.doneCount(),
+    blocked: this.blockedCount(),
+    critical: this.criticalCount(),
+    overdue: this.overdueCount(),
+    completionRate: this.completionRate(),
+    selectedTaskId: this.selectedTaskId(),
+    selectedTaskTitle: this.selectedTask()?.title ?? 'None'
+  }));
+
   selectTask(id: string): void {
     this._selectedTaskId.set(id);
+  }
+
+  selectNextTask(): void {
+    const tasks = this._tasks();
+
+    if (tasks.length === 0) {
+      this.clearSelection();
+      return;
+    }
+
+    const currentId = this._selectedTaskId();
+    const currentIndex = tasks.findIndex(task => task.id === currentId);
+    const nextIndex = currentIndex === -1
+      ? 0
+      : (currentIndex + 1) % tasks.length;
+
+    this.selectTask(tasks[nextIndex].id);
   }
 
   clearSelection(): void {
@@ -123,6 +218,22 @@ export class TaskService {
     this._tasks.update(tasks => [...tasks, task]);
     this.notificationService.success('Task created successfully');
 
+    return task;
+  }
+
+  addSignalDemoTask(): Task {
+    const task = this.addTask({
+      title: 'Review signal architecture',
+      description: 'Trace writable signals, computed signals, and template consumers in TaskFlow.',
+      status: 'todo',
+      priority: 'critical',
+      dueDate: new Date('2026-05-20'),
+      tags: ['signals', 'architecture'],
+      assigneeId: 'user-1',
+      projectId: 'proj-1'
+    });
+
+    this.selectTask(task.id);
     return task;
   }
 
@@ -179,6 +290,20 @@ export class TaskService {
     }
   }
 
+  cycleFirstTaskStatus(): void {
+    const firstTask = this._tasks()[0];
+
+    if (!firstTask) {
+      return;
+    }
+
+    const statusOrder: TaskStatus[] = ['todo', 'in-progress', 'done', 'blocked'];
+    const currentIndex = statusOrder.indexOf(firstTask.status);
+    const nextStatus = statusOrder[(currentIndex + 1) % statusOrder.length];
+
+    this.updateStatus(firstTask.id, nextStatus);
+  }
+
   deleteTask(id: string): void {
     const task = this.getTaskById(id);
 
@@ -191,5 +316,11 @@ export class TaskService {
     if (task) {
       this.notificationService.success(`${task.title} deleted`);
     }
+  }
+
+  resetSignalDemoState(): void {
+    this._tasks.set(cloneInitialTasks());
+    this.clearSelection();
+    this.notificationService.info('Signal demo state reset');
   }
 }
