@@ -23,6 +23,13 @@ export const routes: Routes = [
     title: 'Signals — TaskFlow'
   },
   {
+    path: 'rxjs',
+    loadComponent: () =>
+      import('./features/rxjs/rxjs-decision-lab.component')
+        .then(m => m.RxjsDecisionLabComponent),
+    title: 'Signals vs RxJS — TaskFlow'
+  },
+  {
     path: 'tasks',
     canActivate: [authGuard],
     loadChildren: () =>

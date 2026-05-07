@@ -1,69 +1,39 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
-import { NotificationService } from './notification.service';
+import { DestroyRef, computed, inject, Injectable, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Observable, catchError, finalize, tap, throwError } from 'rxjs';
+
+import { cloneTasks } from '../data/initial-tasks';
 import {
   CreateTaskData,
   Task,
   TaskStatus,
   UpdateTaskData
 } from '../models/task.model';
-
-const INITIAL_TASKS: Task[] = [
-  {
-    id: 'task-1',
-    title: 'Design dashboard layout',
-    description: 'Create the main dashboard layout for TaskFlow.',
-    status: 'in-progress',
-    priority: 'high',
-    dueDate: new Date('2026-05-10'),
-    tags: ['ui', 'dashboard'],
-    createdAt: new Date('2026-04-20'),
-    updatedAt: new Date('2026-04-22')
-  },
-  {
-    id: 'task-2',
-    title: 'Build reusable task card',
-    description: 'Create a presentational task card component.',
-    status: 'todo',
-    priority: 'medium',
-    dueDate: new Date('2026-05-15'),
-    tags: ['component', 'shared'],
-    createdAt: new Date('2026-04-21'),
-    updatedAt: new Date('2026-04-21')
-  },
-  {
-    id: 'task-3',
-    title: 'Add status filtering',
-    description: 'Allow users to filter tasks by status.',
-    status: 'blocked',
-    priority: 'high',
-    dueDate: new Date('2026-05-05'),
-    tags: ['filter', 'state'],
-    createdAt: new Date('2026-04-23'),
-    updatedAt: new Date('2026-04-25')
-  }
-];
-
-function cloneInitialTasks(): Task[] {
-  return INITIAL_TASKS.map(task => ({
-    ...task,
-    dueDate: task.dueDate ? new Date(task.dueDate) : null,
-    createdAt: new Date(task.createdAt),
-    updatedAt: new Date(task.updatedAt),
-    tags: [...task.tags]
-  }));
-}
+import { HttpTaskService } from './http-task.service';
+import { NotificationService } from './notification.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TaskService {
-  private notificationService = inject(NotificationService);
+  private readonly notificationService = inject(NotificationService);
+  private readonly httpTaskService = inject(HttpTaskService);
+  private readonly destroyRef = inject(DestroyRef);
 
-  private _tasks = signal<Task[]>(cloneInitialTasks());
+  private readonly _tasks = signal<Task[]>(cloneTasks());
   readonly tasks = this._tasks.asReadonly();
 
-  private _selectedTaskId = signal<string | null>(null);
+  private readonly _selectedTaskId = signal<string | null>(null);
   readonly selectedTaskId = this._selectedTaskId.asReadonly();
+
+  private readonly _loading = signal(false);
+  readonly loading = this._loading.asReadonly();
+
+  private readonly _error = signal<string | null>(null);
+  readonly error = this._error.asReadonly();
+
+  private readonly _httpLoaded = signal(false);
+  readonly httpLoaded = this._httpLoaded.asReadonly();
 
   readonly selectedTask = computed(() => {
     const id = this._selectedTaskId();
@@ -159,9 +129,37 @@ export class TaskService {
     critical: this.criticalCount(),
     overdue: this.overdueCount(),
     completionRate: this.completionRate(),
+    loading: this.loading(),
+    error: this.error(),
+    httpLoaded: this.httpLoaded(),
     selectedTaskId: this.selectedTaskId(),
     selectedTaskTitle: this.selectedTask()?.title ?? 'None'
   }));
+
+  loadTasksFromHttp(forceRefresh = false): void {
+    this._loading.set(true);
+    this._error.set(null);
+
+    this.httpTaskService.loadTasks(forceRefresh).pipe(
+      takeUntilDestroyed(this.destroyRef),
+      finalize(() => this._loading.set(false))
+    ).subscribe({
+      next: tasks => {
+        this._tasks.set(tasks);
+        this._httpLoaded.set(true);
+        this.notificationService.info('Tasks loaded through RxJS HTTP pipeline');
+      },
+      error: error => {
+        this._error.set(this.getErrorMessage(error));
+        this.notificationService.error('Unable to load tasks');
+      }
+    });
+  }
+
+  simulateNextHttpFailure(): void {
+    this.httpTaskService.simulateNextFailure();
+    this.notificationService.warning('The next simulated HTTP request will fail once');
+  }
 
   selectTask(id: string): void {
     this._selectedTaskId.set(id);
@@ -215,10 +213,37 @@ export class TaskService {
       updatedAt: now
     };
 
-    this._tasks.update(tasks => [...tasks, task]);
+    this.addTaskToState(task);
     this.notificationService.success('Task created successfully');
 
     return task;
+  }
+
+  createTaskRemote(data: CreateTaskData): Observable<Task> {
+    const optimisticTask: Task = {
+      ...data,
+      id: `temp-${Date.now()}`,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    this.addTaskToState(optimisticTask);
+
+    return this.httpTaskService.createTask(data).pipe(
+      tap(savedTask => {
+        this._tasks.update(tasks =>
+          tasks.map(task => task.id === optimisticTask.id ? savedTask : task)
+        );
+        this.selectTask(savedTask.id);
+        this.notificationService.success('Task created through RxJS HTTP pipeline');
+      }),
+      catchError(error => {
+        this.removeTaskFromState(optimisticTask.id, false);
+        this._error.set(this.getErrorMessage(error));
+        this.notificationService.error('Task creation failed and optimistic update was rolled back');
+        return throwError(() => error);
+      })
+    );
   }
 
   addSignalDemoTask(): Task {
@@ -250,13 +275,39 @@ export class TaskService {
       updatedAt: new Date()
     };
 
-    this._tasks.update(tasks =>
-      tasks.map(task => task.id === id ? updated : task)
-    );
-
+    this.updateTaskInState(updated);
     this.notificationService.success('Task updated successfully');
 
     return updated;
+  }
+
+  updateTaskRemote(id: string, changes: UpdateTaskData): Observable<Task> {
+    const previous = this.getTaskById(id);
+
+    if (!previous) {
+      return throwError(() => new Error('Unable to update task. Task was not found.'));
+    }
+
+    const optimistic: Task = {
+      ...previous,
+      ...changes,
+      updatedAt: new Date()
+    };
+
+    this.updateTaskInState(optimistic);
+
+    return this.httpTaskService.updateTask(id, changes).pipe(
+      tap(savedTask => {
+        this.updateTaskInState(savedTask);
+        this.notificationService.success('Task updated through RxJS HTTP pipeline');
+      }),
+      catchError(error => {
+        this.updateTaskInState(previous);
+        this._error.set(this.getErrorMessage(error));
+        this.notificationService.error('Task update failed and optimistic update was rolled back');
+        return throwError(() => error);
+      })
+    );
   }
 
   updateStatus(taskId: string, status: TaskStatus): void {
@@ -266,17 +317,7 @@ export class TaskService {
       return;
     }
 
-    this._tasks.update(tasks =>
-      tasks.map(item =>
-        item.id === taskId
-          ? {
-              ...item,
-              status,
-              updatedAt: new Date()
-            }
-          : item
-      )
-    );
+    this.updateStatusInState(taskId, status);
 
     if (status === 'done') {
       this.notificationService.success(`${task.title} marked as complete`);
@@ -288,6 +329,30 @@ export class TaskService {
         8000
       );
     }
+  }
+
+  updateStatusRemote(taskId: string, status: TaskStatus): Observable<Task> {
+    const previous = this.getTaskById(taskId);
+
+    if (!previous) {
+      return throwError(() => new Error('Unable to update status. Task was not found.'));
+    }
+
+    this.updateStatusInState(taskId, status);
+
+    return this.httpTaskService.updateTask(taskId, { status }).pipe(
+      tap(savedTask => {
+        this.updateTaskInState(savedTask);
+        if (status === 'done') {
+          this.notificationService.success(`${savedTask.title} marked complete through RxJS`);
+        }
+      }),
+      catchError(error => {
+        this.updateTaskInState(previous);
+        this.notificationService.error('Status update failed and was rolled back');
+        return throwError(() => error);
+      })
+    );
   }
 
   cycleFirstTaskStatus(): void {
@@ -307,20 +372,74 @@ export class TaskService {
   deleteTask(id: string): void {
     const task = this.getTaskById(id);
 
-    this._tasks.update(tasks => tasks.filter(item => item.id !== id));
-
-    if (this._selectedTaskId() === id) {
-      this.clearSelection();
-    }
+    this.removeTaskFromState(id);
 
     if (task) {
       this.notificationService.success(`${task.title} deleted`);
     }
   }
 
+  addTaskToState(task: Task): void {
+    this._tasks.update(tasks =>
+      tasks.some(item => item.id === task.id)
+        ? tasks
+        : [...tasks, this.cloneTask(task)]
+    );
+  }
+
+  updateTaskInState(updated: Task): void {
+    this._tasks.update(tasks =>
+      tasks.map(task => task.id === updated.id ? this.cloneTask(updated) : task)
+    );
+  }
+
+  removeTaskFromState(taskId: string, showNotification = true): void {
+    this._tasks.update(tasks => tasks.filter(item => item.id !== taskId));
+
+    if (this._selectedTaskId() === taskId) {
+      this.clearSelection();
+    }
+
+    if (showNotification) {
+      this.notificationService.info('Task removed from signal state');
+    }
+  }
+
+  updateStatusInState(taskId: string, status: TaskStatus): void {
+    this._tasks.update(tasks =>
+      tasks.map(item =>
+        item.id === taskId
+          ? {
+              ...item,
+              status,
+              updatedAt: new Date()
+            }
+          : item
+      )
+    );
+  }
+
   resetSignalDemoState(): void {
-    this._tasks.set(cloneInitialTasks());
+    this._tasks.set(cloneTasks());
     this.clearSelection();
+    this._error.set(null);
+    this._httpLoaded.set(false);
     this.notificationService.info('Signal demo state reset');
+  }
+
+  private cloneTask(task: Task): Task {
+    return {
+      ...task,
+      dueDate: task.dueDate ? new Date(task.dueDate) : null,
+      createdAt: new Date(task.createdAt),
+      updatedAt: new Date(task.updatedAt),
+      tags: [...task.tags]
+    };
+  }
+
+  private getErrorMessage(error: unknown): string {
+    return error instanceof Error
+      ? error.message
+      : 'Unknown task service error.';
   }
 }

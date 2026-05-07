@@ -10,16 +10,13 @@ import { TaskService } from '../../../core/services/task.service';
   imports: [RouterLink, RouterLinkActive],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <nav class="navbar" role="navigation" aria-label="Main navigation">
-      <a class="navbar__brand" routerLink="/dashboard">
-        TaskFlow
-      </a>
+    <nav class="navbar" aria-label="Primary navigation">
+      <a routerLink="/dashboard" class="navbar__brand">TaskFlow</a>
 
       <div class="navbar__links">
         <a
           routerLink="/dashboard"
           routerLinkActive="navbar__link--active"
-          [routerLinkActiveOptions]="{ exact: true }"
         >
           Dashboard
         </a>
@@ -36,6 +33,13 @@ import { TaskService } from '../../../core/services/task.service';
           routerLinkActive="navbar__link--active"
         >
           Signals
+        </a>
+
+        <a
+          routerLink="/rxjs"
+          routerLinkActive="navbar__link--active"
+        >
+          RxJS
         </a>
 
         <a
@@ -59,11 +63,17 @@ import { TaskService } from '../../../core/services/task.service';
           Complete: {{ taskService.completionRate() }}%
         </span>
 
+        @if (taskService.loading()) {
+          <span class="navbar__badge navbar__badge--loading">
+            Loading...
+          </span>
+        }
+
         <button
           type="button"
           class="navbar__auth"
           (click)="loginAsAdmin()"
-          title="Demo helper: grants admin role for Chapter 8 guard testing"
+          title="Demo helper: grants admin role for guard testing"
         >
           Admin Demo
         </button>
@@ -119,6 +129,10 @@ import { TaskService } from '../../../core/services/task.service';
       padding: 0.35rem 0.7rem;
       border-radius: 999px;
       font-size: 0.85rem;
+    }
+
+    .navbar__badge--loading {
+      background: rgba(37, 99, 235, 0.6);
     }
 
     .navbar__auth {

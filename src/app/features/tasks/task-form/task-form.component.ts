@@ -19,7 +19,7 @@ import {
   ReactiveFormsModule,
   Validators
 } from '@angular/forms';
-import { of } from 'rxjs';
+import { finalize, of, retry, timer } from 'rxjs';
 
 import {
   CreateTaskData,
@@ -49,8 +49,10 @@ export class TaskFormComponent {
 
   readonly isSubmitting = signal(false);
   readonly submitError = signal<string | null>(null);
+  readonly isSuccess = signal(false);
 
   readonly mode = computed(() => this.task() ? 'Edit' : 'Create');
+  readonly canSubmit = computed(() => this.form.valid && !this.isSubmitting());
 
   readonly priorityOptions: { value: TaskPriority; label: string }[] = [
     { value: 'low', label: 'Low' },
@@ -156,56 +158,40 @@ export class TaskFormComponent {
     this.form.markAsDirty();
   }
 
-  async onSubmit(): Promise<void> {
-    if (this.form.invalid) {
+  onSubmit(): void {
+    if (!this.canSubmit()) {
       this.form.markAllAsTouched();
       return;
     }
 
+    const payload = this.buildTaskPayload();
+    const existingTask = this.task();
+    const request$ = existingTask
+      ? this.taskService.updateTaskRemote(existingTask.id, payload as UpdateTaskData)
+      : this.taskService.createTaskRemote(payload);
+
     this.isSubmitting.set(true);
     this.submitError.set(null);
+    this.isSuccess.set(false);
 
-    const raw = this.form.getRawValue();
-
-    const taskData: CreateTaskData = {
-      title: raw.title.trim(),
-      description: raw.description.trim(),
-      priority: raw.priority,
-      status: raw.status,
-      dueDate: raw.dueDate ? new Date(raw.dueDate) : null,
-      tags: raw.tags
-        .map(tag => tag.trim().toLowerCase())
-        .filter(Boolean),
-      assigneeId: 'user-1',
-      projectId: 'proj-1'
-    };
-
-    try {
-      const existingTask = this.task();
-      let savedTask: Task | null;
-
-      if (existingTask) {
-        savedTask = this.taskService.updateTask(existingTask.id, taskData as UpdateTaskData);
-      } else {
-        savedTask = this.taskService.addTask(taskData);
+    request$.pipe(
+      retry({ count: 1, delay: () => timer(500) }),
+      finalize(() => this.isSubmitting.set(false)),
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: savedTask => {
+        this.form.markAsPristine();
+        this.isSuccess.set(true);
+        this.saved.emit(savedTask);
+      },
+      error: error => {
+        this.submitError.set(
+          error instanceof Error
+            ? error.message
+            : 'An error occurred. Please try again.'
+        );
       }
-
-      if (!savedTask) {
-        throw new Error('Unable to save task. Please try again.');
-      }
-
-      this.taskService.selectTask(savedTask.id);
-      this.form.markAsPristine();
-      this.saved.emit(savedTask);
-    } catch (error) {
-      this.submitError.set(
-        error instanceof Error
-          ? error.message
-          : 'An error occurred. Please try again.'
-      );
-    } finally {
-      this.isSubmitting.set(false);
-    }
+    });
   }
 
   onCancel(): void {
@@ -270,6 +256,23 @@ export class TaskFormComponent {
     }
 
     return 'Invalid tag.';
+  }
+
+  private buildTaskPayload(): CreateTaskData {
+    const raw = this.form.getRawValue();
+
+    return {
+      title: raw.title.trim(),
+      description: raw.description.trim(),
+      priority: raw.priority,
+      status: raw.status,
+      dueDate: raw.dueDate ? new Date(raw.dueDate) : null,
+      tags: raw.tags
+        .map(tag => tag.trim().toLowerCase())
+        .filter(Boolean),
+      assigneeId: 'user-1',
+      projectId: 'proj-1'
+    };
   }
 
   private patchFromTask(task: Task | null): void {
