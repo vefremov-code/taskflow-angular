@@ -1,12 +1,14 @@
 import { NgClass } from '@angular/common';
 import { ChangeDetectionStrategy, Component, input, output } from '@angular/core';
+
 import { Task, TaskStatus } from '../../../core/models/task.model';
 import { StatusBadgeComponent } from '../../../shared/components/status-badge/status-badge.component';
+import { HighlightDirective } from '../../../shared/directives/highlight.directive';
 
 @Component({
   selector: 'app-task-card',
   standalone: true,
-  imports: [NgClass, StatusBadgeComponent],
+  imports: [NgClass, StatusBadgeComponent, HighlightDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article
@@ -16,8 +18,17 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
     >
       <header class="task-card__header">
         <div>
-          <h3 class="task-card__title">{{ task().title }}</h3>
-          <p class="task-card__description">{{ task().description }}</p>
+          <h3
+            class="task-card__title"
+            [appHighlight]="highlightTerm()"
+            [highlightText]="task().title"
+          ></h3>
+
+          <p
+            class="task-card__description"
+            [appHighlight]="highlightTerm()"
+            [highlightText]="task().description"
+          ></p>
         </div>
 
         <app-status-badge [status]="task().status" />
@@ -29,7 +40,11 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
         </span>
 
         @for (tag of task().tags; track tag) {
-          <span class="tag">{{ tag }}</span>
+          <span
+            class="tag"
+            [appHighlight]="highlightTerm()"
+            [highlightText]="tag"
+          ></span>
         }
       </div>
 
@@ -155,6 +170,13 @@ import { StatusBadgeComponent } from '../../../shared/components/status-badge/st
 
     .task-card__actions button:hover {
       background: #e5e7eb;
+    }
+
+    :host ::ng-deep .highlight-match {
+      background: #fef08a;
+      color: #111827;
+      border-radius: 0.2rem;
+      padding: 0 0.08rem;
     }
   `]
 })

@@ -57,6 +57,13 @@ import { TaskService } from '../../../core/services/task.service';
         </a>
 
         <a
+          routerLink="/testing"
+          routerLinkActive="navbar__link--active"
+        >
+          Testing
+        </a>
+
+        <a
           routerLink="/admin"
           routerLinkActive="navbar__link--active"
         >

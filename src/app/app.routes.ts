@@ -44,6 +44,13 @@ export const routes: Routes = [
     title: 'Performance — TaskFlow'
   },
   {
+    path: 'testing',
+    loadComponent: () =>
+      import('./features/testing/testing-lab.component')
+        .then(m => m.TestingLabComponent),
+    title: 'Testing — TaskFlow'
+  },
+  {
     path: 'tasks',
     canActivate: [authGuard],
     loadChildren: () =>
