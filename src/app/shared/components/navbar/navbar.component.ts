@@ -43,6 +43,13 @@ import { TaskService } from '../../../core/services/task.service';
         </a>
 
         <a
+          routerLink="/rxjs-operators"
+          routerLinkActive="navbar__link--active"
+        >
+          Operators
+        </a>
+
+        <a
           routerLink="/admin"
           routerLinkActive="navbar__link--active"
         >

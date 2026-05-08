@@ -30,6 +30,13 @@ export const routes: Routes = [
     title: 'Signals vs RxJS — TaskFlow'
   },
   {
+    path: 'rxjs-operators',
+    loadComponent: () =>
+      import('./features/rxjs-operators/rxjs-operators-lab.component')
+        .then(m => m.RxjsOperatorsLabComponent),
+    title: 'RxJS Operators — TaskFlow'
+  },
+  {
     path: 'tasks',
     canActivate: [authGuard],
     loadChildren: () =>
