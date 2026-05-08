@@ -50,6 +50,13 @@ import { TaskService } from '../../../core/services/task.service';
         </a>
 
         <a
+          routerLink="/performance"
+          routerLinkActive="navbar__link--active"
+        >
+          Performance
+        </a>
+
+        <a
           routerLink="/admin"
           routerLinkActive="navbar__link--active"
         >

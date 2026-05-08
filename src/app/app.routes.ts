@@ -37,6 +37,13 @@ export const routes: Routes = [
     title: 'RxJS Operators — TaskFlow'
   },
   {
+    path: 'performance',
+    loadComponent: () =>
+      import('./features/performance/performance-lab.component')
+        .then(m => m.PerformanceLabComponent),
+    title: 'Performance — TaskFlow'
+  },
+  {
     path: 'tasks',
     canActivate: [authGuard],
     loadChildren: () =>
