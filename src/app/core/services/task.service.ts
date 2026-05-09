@@ -2,25 +2,24 @@ import { DestroyRef, computed, inject, Injectable, signal } from '@angular/core'
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Observable, catchError, finalize, tap, throwError } from 'rxjs';
 
-import { cloneTasks } from '../data/initial-tasks';
 import {
   CreateTaskData,
   Task,
   TaskStatus,
   UpdateTaskData
 } from '../models/task.model';
-import { HttpTaskService } from './http-task.service';
 import { NotificationService } from './notification.service';
+import { TaskApiService } from './task-api.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class TaskService {
   private readonly notificationService = inject(NotificationService);
-  private readonly httpTaskService = inject(HttpTaskService);
+  private readonly taskApiService = inject(TaskApiService);
   private readonly destroyRef = inject(DestroyRef);
 
-  private readonly _tasks = signal<Task[]>(cloneTasks());
+  private readonly _tasks = signal<Task[]>([]);
   readonly tasks = this._tasks.asReadonly();
 
   private readonly _selectedTaskId = signal<string | null>(null);
@@ -136,29 +135,40 @@ export class TaskService {
     selectedTaskTitle: this.selectedTask()?.title ?? 'None'
   }));
 
-  loadTasksFromHttp(forceRefresh = false): void {
+  constructor() {
+    queueMicrotask(() => this.loadTasks());
+  }
+
+  loadTasks(forceRefresh = false): void {
+    if (this._loading()) {
+      return;
+    }
+
     this._loading.set(true);
     this._error.set(null);
 
-    this.httpTaskService.loadTasks(forceRefresh).pipe(
+    this.taskApiService.getAll(forceRefresh).pipe(
       takeUntilDestroyed(this.destroyRef),
       finalize(() => this._loading.set(false))
     ).subscribe({
       next: tasks => {
-        this._tasks.set(tasks);
+        this._tasks.set(tasks.map(task => this.cloneTask(task)));
         this._httpLoaded.set(true);
-        this.notificationService.info('Tasks loaded through RxJS HTTP pipeline');
       },
       error: error => {
         this._error.set(this.getErrorMessage(error));
-        this.notificationService.error('Unable to load tasks');
+        this.notificationService.error('Unable to load tasks from the API');
       }
     });
   }
 
+  loadTasksFromHttp(forceRefresh = false): void {
+    this.loadTasks(forceRefresh);
+  }
+
   simulateNextHttpFailure(): void {
-    this.httpTaskService.simulateNextFailure();
-    this.notificationService.warning('The next simulated HTTP request will fail once');
+    this.taskApiService.simulateNextFailure();
+    this.notificationService.warning('The next API request will fail once');
   }
 
   selectTask(id: string): void {
@@ -204,38 +214,28 @@ export class TaskService {
   }
 
   addTask(data: CreateTaskData): Task {
-    const now = new Date();
+    const optimisticTask = this.createOptimisticTask(data);
 
-    const task: Task = {
-      ...data,
-      id: crypto.randomUUID(),
-      createdAt: now,
-      updatedAt: now
-    };
+    this.addTaskToState(optimisticTask);
+    this.createTaskRemote(data).subscribe({
+      error: () => undefined
+    });
 
-    this.addTaskToState(task);
-    this.notificationService.success('Task created successfully');
-
-    return task;
+    return optimisticTask;
   }
 
   createTaskRemote(data: CreateTaskData): Observable<Task> {
-    const optimisticTask: Task = {
-      ...data,
-      id: `temp-${Date.now()}`,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
+    const optimisticTask = this.createOptimisticTask(data);
 
     this.addTaskToState(optimisticTask);
 
-    return this.httpTaskService.createTask(data).pipe(
+    return this.taskApiService.createTask(data).pipe(
       tap(savedTask => {
         this._tasks.update(tasks =>
-          tasks.map(task => task.id === optimisticTask.id ? savedTask : task)
+          tasks.map(task => task.id === optimisticTask.id ? this.cloneTask(savedTask) : task)
         );
         this.selectTask(savedTask.id);
-        this.notificationService.success('Task created through RxJS HTTP pipeline');
+        this.notificationService.success('Task created through the API');
       }),
       catchError(error => {
         this.removeTaskFromState(optimisticTask.id, false);
@@ -247,7 +247,7 @@ export class TaskService {
   }
 
   addSignalDemoTask(): Task {
-    const task = this.addTask({
+    const task = this.createOptimisticTask({
       title: 'Review signal architecture',
       description: 'Trace writable signals, computed signals, and template consumers in TaskFlow.',
       status: 'todo',
@@ -258,7 +258,10 @@ export class TaskService {
       projectId: 'proj-1'
     });
 
+    this.addTaskToState(task);
     this.selectTask(task.id);
+    this.notificationService.success('Signal demo task added locally');
+
     return task;
   }
 
@@ -276,7 +279,9 @@ export class TaskService {
     };
 
     this.updateTaskInState(updated);
-    this.notificationService.success('Task updated successfully');
+    this.updateTaskRemote(id, changes).subscribe({
+      error: () => undefined
+    });
 
     return updated;
   }
@@ -296,10 +301,10 @@ export class TaskService {
 
     this.updateTaskInState(optimistic);
 
-    return this.httpTaskService.updateTask(id, changes).pipe(
+    return this.taskApiService.updateTask(id, changes).pipe(
       tap(savedTask => {
         this.updateTaskInState(savedTask);
-        this.notificationService.success('Task updated through RxJS HTTP pipeline');
+        this.notificationService.success('Task updated through the API');
       }),
       catchError(error => {
         this.updateTaskInState(previous);
@@ -311,24 +316,9 @@ export class TaskService {
   }
 
   updateStatus(taskId: string, status: TaskStatus): void {
-    const task = this._tasks().find(item => item.id === taskId);
-
-    if (!task) {
-      return;
-    }
-
-    this.updateStatusInState(taskId, status);
-
-    if (status === 'done') {
-      this.notificationService.success(`${task.title} marked as complete`);
-    }
-
-    if (status === 'blocked') {
-      this.notificationService.error(
-        `${task.title} is blocked — review required`,
-        8000
-      );
-    }
+    this.updateStatusRemote(taskId, status).subscribe({
+      error: () => undefined
+    });
   }
 
   updateStatusRemote(taskId: string, status: TaskStatus): Observable<Task> {
@@ -340,15 +330,22 @@ export class TaskService {
 
     this.updateStatusInState(taskId, status);
 
-    return this.httpTaskService.updateTask(taskId, { status }).pipe(
-      tap(savedTask => {
-        this.updateTaskInState(savedTask);
-        if (status === 'done') {
-          this.notificationService.success(`${savedTask.title} marked complete through RxJS`);
-        }
-      }),
+    if (status === 'done') {
+      this.notificationService.success(`${previous.title} marked as complete`);
+    }
+
+    if (status === 'blocked') {
+      this.notificationService.error(
+        `${previous.title} is blocked — review required`,
+        8000
+      );
+    }
+
+    return this.taskApiService.updateStatus(taskId, status).pipe(
+      tap(savedTask => this.updateTaskInState(savedTask)),
       catchError(error => {
         this.updateTaskInState(previous);
+        this._error.set(this.getErrorMessage(error));
         this.notificationService.error('Status update failed and was rolled back');
         return throwError(() => error);
       })
@@ -372,11 +369,22 @@ export class TaskService {
   deleteTask(id: string): void {
     const task = this.getTaskById(id);
 
-    this.removeTaskFromState(id);
-
-    if (task) {
-      this.notificationService.success(`${task.title} deleted`);
+    if (!task) {
+      return;
     }
+
+    this.removeTaskFromState(id, false);
+
+    this.taskApiService.deleteTask(id).pipe(
+      takeUntilDestroyed(this.destroyRef)
+    ).subscribe({
+      next: () => this.notificationService.success(`${task.title} deleted through the API`),
+      error: error => {
+        this.addTaskToState(task);
+        this._error.set(this.getErrorMessage(error));
+        this.notificationService.error('Delete failed and the task was restored');
+      }
+    });
   }
 
   addTaskToState(task: Task): void {
@@ -420,11 +428,24 @@ export class TaskService {
   }
 
   resetSignalDemoState(): void {
-    this._tasks.set(cloneTasks());
+    this._tasks.set([]);
     this.clearSelection();
     this._error.set(null);
     this._httpLoaded.set(false);
-    this.notificationService.info('Signal demo state reset');
+    this.taskApiService.invalidateCache();
+    this.loadTasks(true);
+    this.notificationService.info('Signal demo state reset from API');
+  }
+
+  private createOptimisticTask(data: CreateTaskData): Task {
+    const now = new Date();
+
+    return {
+      ...data,
+      id: `temp-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+      createdAt: now,
+      updatedAt: now
+    };
   }
 
   private cloneTask(task: Task): Task {

@@ -33,9 +33,34 @@ export interface Task {
 export type CreateTaskData = Omit<Task, 'id' | 'createdAt' | 'updatedAt'>;
 export type UpdateTaskData = Partial<CreateTaskData>;
 
-// Chapter 10 names used by the simulated HTTP layer.
-// They intentionally mirror the application-level types so the chapter can
-// focus on architecture rather than DTO mapping.
+export interface ApiTaskResponse {
+  id: string;
+  title: string;
+  description?: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  assigneeId?: string | null;
+  projectId?: string | null;
+  dueDate?: string | null;
+  tags?: string[] | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateTaskDto {
+  title: string;
+  description: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  assigneeId?: string;
+  projectId?: string;
+  dueDate: string | null;
+  tags: string[];
+}
+
+export type UpdateTaskDto = Partial<CreateTaskDto>;
+
+// Backward-compatible names used by earlier Chapter 10/RxJS examples.
 export type CreateTaskRequest = CreateTaskData;
 export type UpdateTaskRequest = UpdateTaskData;
 
