@@ -1,6 +1,10 @@
 import { Routes } from '@angular/router';
 
-import { authGuard, roleGuard } from './core/guards/auth.guard';
+import {
+  authGuard,
+  authInitializedGuard,
+  roleGuard
+} from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -58,8 +62,15 @@ export const routes: Routes = [
     title: 'State Management — TaskFlow'
   },
   {
+    path: 'security',
+    loadComponent: () =>
+      import('./features/security/security-lab.component')
+        .then(m => m.SecurityLabComponent),
+    title: 'Security — TaskFlow'
+  },
+  {
     path: 'tasks',
-    canActivate: [authGuard],
+    canActivate: [authInitializedGuard, authGuard],
     loadChildren: () =>
       import('./features/tasks/tasks.routes')
         .then(m => m.TASK_ROUTES),
@@ -67,7 +78,7 @@ export const routes: Routes = [
   },
   {
     path: 'admin',
-    canActivate: [authGuard, roleGuard],
+    canActivate: [authInitializedGuard, authGuard, roleGuard],
     data: { requiredRole: 'admin' },
     loadChildren: () =>
       import('./features/admin/admin.routes')

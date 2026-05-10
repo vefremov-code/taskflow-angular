@@ -3,74 +3,30 @@ import { RouterLink, RouterLinkActive } from '@angular/router';
 
 import { AuthService } from '../../../core/services/auth.service';
 import { TaskService } from '../../../core/services/task.service';
+import { HasRoleDirective } from '../../directives/has-role.directive';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive],
+  imports: [RouterLink, RouterLinkActive, HasRoleDirective],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <nav class="navbar" aria-label="Primary navigation">
       <a routerLink="/dashboard" class="navbar__brand">TaskFlow</a>
 
       <div class="navbar__links">
-        <a
-          routerLink="/dashboard"
-          routerLinkActive="navbar__link--active"
-        >
-          Dashboard
-        </a>
+        <a routerLink="/dashboard" routerLinkActive="navbar__link--active">Dashboard</a>
+        <a routerLink="/tasks" routerLinkActive="navbar__link--active">Tasks</a>
+        <a routerLink="/signals" routerLinkActive="navbar__link--active">Signals</a>
+        <a routerLink="/rxjs" routerLinkActive="navbar__link--active">RxJS</a>
+        <a routerLink="/rxjs-operators" routerLinkActive="navbar__link--active">Operators</a>
+        <a routerLink="/performance" routerLinkActive="navbar__link--active">Performance</a>
+        <a routerLink="/testing" routerLinkActive="navbar__link--active">Testing</a>
+        <a routerLink="/state-management" routerLinkActive="navbar__link--active">State</a>
+        <a routerLink="/security" routerLinkActive="navbar__link--active">Security</a>
 
         <a
-          routerLink="/tasks"
-          routerLinkActive="navbar__link--active"
-        >
-          Tasks
-        </a>
-
-        <a
-          routerLink="/signals"
-          routerLinkActive="navbar__link--active"
-        >
-          Signals
-        </a>
-
-        <a
-          routerLink="/rxjs"
-          routerLinkActive="navbar__link--active"
-        >
-          RxJS
-        </a>
-
-        <a
-          routerLink="/rxjs-operators"
-          routerLinkActive="navbar__link--active"
-        >
-          Operators
-        </a>
-
-        <a
-          routerLink="/performance"
-          routerLinkActive="navbar__link--active"
-        >
-          Performance
-        </a>
-
-        <a
-          routerLink="/testing"
-          routerLinkActive="navbar__link--active"
-        >
-          Testing
-        </a>
-
-        <a
-          routerLink="/state-management"
-          routerLinkActive="navbar__link--active"
-        >
-          State
-        </a>
-
-        <a
+          *appHasRole="'admin'"
           routerLink="/admin"
           routerLinkActive="navbar__link--active"
         >
@@ -79,32 +35,27 @@ import { TaskService } from '../../../core/services/task.service';
       </div>
 
       <div class="navbar__stats">
-        <span class="navbar__badge">
-          In Progress: {{ taskService.inProgressCount() }}
-        </span>
-
-        <span class="navbar__badge">
-          Done: {{ taskService.doneCount() }}
-        </span>
-
-        <span class="navbar__badge">
-          Complete: {{ taskService.completionRate() }}%
-        </span>
+        <span class="navbar__badge">In Progress: {{ taskService.inProgressCount() }}</span>
+        <span class="navbar__badge">Done: {{ taskService.doneCount() }}</span>
+        <span class="navbar__badge">Complete: {{ taskService.completionRate() }}%</span>
 
         @if (taskService.loading()) {
-          <span class="navbar__badge navbar__badge--loading">
-            Loading...
-          </span>
+          <span class="navbar__badge navbar__badge--loading">Loading...</span>
         }
 
-        <button
-          type="button"
-          class="navbar__auth"
-          (click)="loginAsAdmin()"
-          title="Demo helper: grants admin role for guard testing"
-        >
-          Admin Demo
-        </button>
+        @if (authService.isAuthenticatedSignal()) {
+          <span class="navbar__badge navbar__badge--auth">
+            {{ authService.currentUser()?.name }} · {{ authService.primaryRole() }}
+          </span>
+
+          <button type="button" class="navbar__auth" (click)="logout()">
+            Logout
+          </button>
+        } @else {
+          <a routerLink="/auth/login" class="navbar__auth navbar__auth--link">
+            Login
+          </a>
+        }
       </div>
     </nav>
   `,
@@ -163,18 +114,28 @@ import { TaskService } from '../../../core/services/task.service';
       background: rgba(37, 99, 235, 0.6);
     }
 
+    .navbar__badge--auth {
+      background: rgba(34, 197, 94, 0.18);
+    }
+
     .navbar__auth {
       border: 0;
       cursor: pointer;
       font: inherit;
+      text-decoration: none;
+    }
+
+    .navbar__auth--link {
+      display: inline-flex;
+      align-items: center;
     }
   `]
 })
 export class NavbarComponent {
   readonly taskService = inject(TaskService);
-  private readonly authService = inject(AuthService);
+  readonly authService = inject(AuthService);
 
-  loginAsAdmin(): void {
-    this.authService.loginAsAdmin();
+  logout(): void {
+    this.authService.logout();
   }
 }

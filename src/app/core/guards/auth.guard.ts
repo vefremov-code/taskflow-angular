@@ -5,8 +5,24 @@ import {
   Router,
   RouterStateSnapshot
 } from '@angular/router';
+import { filter, map, take } from 'rxjs';
+import { toObservable } from '@angular/core/rxjs-interop';
 
 import { AuthService } from '../services/auth.service';
+
+export const authInitializedGuard: CanActivateFn = () => {
+  const auth = inject(AuthService);
+
+  if (auth.authChecked()) {
+    return true;
+  }
+
+  return toObservable(auth.authChecked).pipe(
+    filter(Boolean),
+    take(1),
+    map(() => true)
+  );
+};
 
 export const authGuard: CanActivateFn = (
   route: ActivatedRouteSnapshot,
