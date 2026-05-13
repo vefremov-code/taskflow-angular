@@ -9,7 +9,7 @@ import { TaskCardComponent } from '../task-card/task-card.component';
 @Component({
   selector: 'app-task-list-page',
   standalone: true,
-  imports: [DatePipe, RouterLink, TaskCardComponent],
+  imports: [RouterLink, TaskCardComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="tasks-page">

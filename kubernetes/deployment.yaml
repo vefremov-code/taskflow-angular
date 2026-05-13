@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskflow
+  labels:
+    app: taskflow
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: taskflow
+  template:
+    metadata:
+      labels:
+        app: taskflow
+    spec:
+      containers:
+        - name: taskflow
+          image: ghcr.io/myorg/taskflow:sha-placeholder
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: config
+              mountPath: /usr/share/nginx/html/config.json
+              subPath: config.json
+              readOnly: true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /index.html
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /index.html
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 10
+      volumes:
+        - name: config
+          configMap:
+            name: taskflow-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: taskflow-config
+data:
+  config.json: |
+    {
+      "apiBaseUrl": "https://api.taskflow.app/v1",
+      "wsBaseUrl": "wss://api.taskflow.app/ws",
+      "featureFlags": {
+        "deploymentDashboard": true,
+        "productionMonitoring": true,
+        "bundleAnalysis": true
+      }
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: taskflow
+spec:
+  selector:
+    app: taskflow
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80

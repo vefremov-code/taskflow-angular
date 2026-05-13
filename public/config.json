@@ -1,0 +1,9 @@
+{
+  "apiBaseUrl": "https://api.taskflow.app/v1",
+  "wsBaseUrl": "wss://api.taskflow.app/ws",
+  "featureFlags": {
+    "deploymentDashboard": true,
+    "productionMonitoring": true,
+    "bundleAnalysis": true
+  }
+}

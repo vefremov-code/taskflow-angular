@@ -24,6 +24,7 @@ import { HasRoleDirective } from '../../directives/has-role.directive';
         <a routerLink="/testing" routerLinkActive="navbar__link--active">Testing</a>
         <a routerLink="/state-management" routerLinkActive="navbar__link--active">State</a>
         <a routerLink="/security" routerLinkActive="navbar__link--active">Security</a>
+        <a routerLink="/deployment" routerLinkActive="navbar__link--active">Deployment</a>
 
         <a
           *appHasRole="'admin'"

@@ -69,6 +69,13 @@ export const routes: Routes = [
     title: 'Security — TaskFlow'
   },
   {
+    path: 'deployment',
+    loadComponent: () =>
+      import('./features/deployment/deployment-lab.component')
+        .then(m => m.DeploymentLabComponent),
+    title: 'Deployment — TaskFlow'
+  },
+  {
     path: 'tasks',
     canActivate: [authInitializedGuard, authGuard],
     loadChildren: () =>
